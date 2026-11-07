@@ -1,0 +1,69 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Library Management System</title><style>
+:root{--bg:#f5f6fa;--card:#fff;--tx:#1e293b;--mut:#64748b;--line:#e2e8f0}
+@media(prefers-color-scheme:dark){:root{--bg:#0f172a;--card:#1e293b;--tx:#f1f5f9;--mut:#94a3b8;--line:#334155}}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--tx)}
+header{padding:28px;text-align:center}h1{margin:0;color:#6366f1}main{max-width:900px;margin:auto;padding:16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}
+.tile{border:0;border-radius:18px;padding:22px;color:#1e293b;font-size:17px;font-weight:600;text-align:left;min-height:120px;cursor:pointer;box-shadow:0 6px 18px #0000001a;transition:.2s;display:flex;flex-direction:column;justify-content:space-between}
+.tile:hover{transform:translateY(-4px);box-shadow:0 12px 26px #00000026}.tile span{font-size:34px}.page{display:none}.page.on{display:block}.bar{padding:16px;border-radius:14px 14px 0 0;color:#1e293b;font-size:20px;font-weight:700;display:flex;gap:14px;align-items:center}
+.bar button{background:#ffffffb0;color:#1e293b;border:0;border-radius:8px;padding:6px 12px;cursor:pointer}
+.card{background:color-mix(in srgb,var(--card) 90%,transparent);backdrop-filter:blur(6px);padding:20px;border-radius:0 0 14px 14px;overflow-x:auto}
+input{display:block;width:100%;max-width:420px;padding:10px;margin:0 0 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--tx)}
+.go{background:#6366f1;color:#fff;border:0;padding:10px 18px;border-radius:8px;cursor:pointer}
+table{width:100%;border-collapse:collapse}th,td{padding:10px;text-align:left;border-bottom:1px solid var(--line)}th{color:var(--mut)}
+.ok{color:#059669}.err{color:#dc2626}
+body{background:var(--bg);position:relative;min-height:100vh}
+#bg{position:fixed;inset:0;z-index:-1;overflow:hidden;background:radial-gradient(ellipse at 80% 0,#fde68a55,transparent 55%),var(--bg)}
+#bg svg{width:100%;height:100%;opacity:.2;filter:sepia(.5) blur(.6px)}
+#bg::after{content:"LIBRARY";position:absolute;inset:0;display:grid;place-items:center;font:900 22vw/1 Georgia,serif;letter-spacing:.08em;color:var(--tx);opacity:.04;transform:rotate(-12deg);pointer-events:none}
+@media(prefers-color-scheme:dark){#bg svg{opacity:.14}}
+h1{font-family:Georgia,serif;font-size:38px;text-shadow:0 2px 12px #6366f133}
+.card{background:color-mix(in srgb,var(--card) 82%,transparent);backdrop-filter:blur(10px);box-shadow:0 18px 40px #0f172a22}
+.tile{box-shadow:0 10px 24px #0f172a30,inset 0 1px 0 #fff5;transition:.2s;background-image:linear-gradient(160deg,#fff3,transparent 60%)}
+.tile:hover{transform:translateY(-4px) scale(1.02)}
+table{background:transparent}#wm{position:fixed;inset:0;z-index:-1;opacity:.17;background-size:cover;background-position:bottom;pointer-events:none}main{position:relative}</style></head><body><div id="bg"></div>
+<div id="wm"></div><header><h1>📖 Library Management System</h1><p style="color:var(--mut)">Pick an option to open its page</p></header><main>
+<div id="home" class="grid"></div><div id="pages"></div></main>
+<script>
+const books=new Map(),issues=[];const $=id=>document.getElementById(id);
+const P=[["add","➕","Add a new book","#c7d2fe"],["all","📚","Display all books","#bae6fd"],["search","🔍","Search for a book","#bbf7d0"],["issue","📤","Issue a book","#fde68a"],["ret","📥","Return a book","#fecaca"],["issued","📋","Currently issued books","#ddd6fe"]];
+const form=(id,f,b)=>f.map(x=>`<input id="${id}-${x[0]}" placeholder="${x[1]}">`).join("")+`<button class="go" onclick="${id}Go()">${b}</button><p id="${id}-m"></p>`;
+const body={add:form("add",[["id","Book ID"],["t","Title"],["a","Author"],["y","Publication year"],["c","Available copies"]],"Add book"),all:"<div id=all-t></div>",
+search:`<input id=q placeholder="Book ID or title" oninput="srch()"><div id=s-t></div>`,issue:form("issue",[["b","Book ID"],["s","Student ID"]],"Issue book"),
+ret:form("ret",[["b","Book ID"],["s","Student ID"]],"Return book"),issued:"<div id=iss-t></div>"};
+$("home").innerHTML=P.map(p=>`<button class=tile style="background:${p[3]}" onclick="go('${p[0]}')"><span>${p[1]}</span>${p[2]}</button>`).join("");
+$("pages").innerHTML=P.map(p=>`<section class=page id=p-${p[0]}><div class=bar style="background:${p[3]}"><button onclick="go()">← Menu</button>${p[1]} ${p[2]}</div><div class=card>${body[p[0]]}</div></section>`).join("");
+function go(id){$("home").style.display=id?"none":"grid";document.querySelectorAll(".page").forEach(s=>s.classList.toggle("on",s.id=="p-"+id));
+ if(id=="all")tbl("all-t",["ID","Title","Author","Year","Copies","Status"],[...books.values()].map(b=>[b.id,b.t,b.a,b.y,b.c,b.c>0?"Available":"Not available"]));
+ if(id=="issued")tbl("iss-t",["Book ID","Title","Student ID","Status"],issues.filter(i=>!i.r).map(i=>[i.b,books.get(i.b).t,i.s,"ISSUED"]));if(id=="search")srch()}
+const tbl=(id,h,r)=>$(id).innerHTML=r.length?`<table><tr>${h.map(x=>`<th>${x}</th>`).join("")}</tr>${r.map(x=>`<tr>${x.map(c=>`<td>${c}</td>`).join("")}</tr>`).join("")}</table>`:"<p>Nothing to show.</p>";
+const msg=(id,ok,t)=>{$(id+"-m").className=ok?"ok":"err";$(id+"-m").textContent=(ok?"✔ ":"✘ ")+t};const v=x=>$(x).value.trim();
+function addGo(){const id=v("add-id"),y=+v("add-y"),c=v("add-c");
+ if(!id||!v("add-t")||!v("add-a"))return msg("add",0,"ID, title and author are required.");if(books.has(id))return msg("add",0,"Duplicate book ID.");
+ if(!Number.isInteger(y)||y<1000||y>2100)return msg("add",0,"Invalid publication year.");if(!/^\d+$/.test(c))return msg("add",0,"Copies must be a non-negative number.");
+ books.set(id,{id,t:v("add-t"),a:v("add-a"),y,c:+c});msg("add",1,"Book added.");document.querySelectorAll("#p-add input").forEach(i=>i.value="")}
+function srch(){const q=v("q").toLowerCase();tbl("s-t",["ID","Title","Author","Year","Copies","Status"],q?[...books.values()].filter(b=>b.id.toLowerCase()==q||b.t.toLowerCase().includes(q)).map(b=>[b.id,b.t,b.a,b.y,b.c,b.c>0?"Available":"Not available"]):[])}
+function issueGo(){const b=books.get(v("issue-b")),s=v("issue-s");if(!b)return msg("issue",0,"Book not found.");if(!s)return msg("issue",0,"Student ID required.");
+ if(b.c<1)return msg("issue",0,"No copies available.");b.c--;issues.push({b:b.id,s,r:false});msg("issue",1,`Issued "${b.t}" to ${s}.`)}
+function retGo(){const i=issues.find(i=>!i.r&&i.b==v("ret-b")&&i.s==v("ret-s"));if(!i)return msg("ret",0,"No outstanding issue record.");i.r=true;books.get(i.b).c++;msg("ret",1,"Return recorded.")}
+
+(function(){let r=7;const rnd=()=>(r=(r*16807)%2147483647)/2147483647;
+const C=["#7f1d1d","#14532d","#1e3a8a","#78350f","#581c87","#9a3412","#134e4a","#3f3f46","#b45309"];
+let o='<defs><linearGradient id="sh" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity=".45"/><stop offset=".25" stop-color="#fff" stop-opacity=".25"/><stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".4"/></linearGradient><linearGradient id="wd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a16207"/><stop offset="1" stop-color="#451a03"/></linearGradient></defs>';
+for(let row=0;row<5;row++){const base=190+row*160;let x=10;
+ while(x<1190){const w=16+rnd()*26,h=95+rnd()*55,c=C[Math.floor(rnd()*C.length)],tilt=rnd()>.96;
+  o+=`<g transform="translate(${x} ${base-h}) ${tilt?'rotate(8 0 '+h+')':''}"><rect width="${w}" height="${h}" rx="2" fill="${c}"/><rect width="${w}" height="${h}" rx="2" fill="url(#sh)"/><rect x="0" y="${h*.12}" width="${w}" height="3" fill="#fde68a" opacity=".7"/><rect x="0" y="${h*.82}" width="${w}" height="3" fill="#fde68a" opacity=".7"/><rect x="${w*.3}" y="${h*.3}" width="${w*.4}" height="${h*.3}" fill="#fff" opacity=".18"/></g>`;
+  x+=w+1+(tilt?14:0);}
+ o+=`<rect x="0" y="${base}" width="1200" height="16" fill="url(#wd)"/><rect x="0" y="${base+16}" width="1200" height="10" fill="#000" opacity=".25"/>`;}
+o+='<radialGradient id="gl"><stop offset="0" stop-color="#fde68a" stop-opacity=".9"/><stop offset="1" stop-color="#fde68a" stop-opacity="0"/></radialGradient><circle cx="1020" cy="120" r="260" fill="url(#gl)"/>';
+document.getElementById("bg").innerHTML='<svg viewBox="0 0 1200 1000" preserveAspectRatio="xMidYMid slice">'+o+'</svg>'})();
+
+(function(){let r=7;const R=()=>(r=(r*16807)%2147483647)/2147483647,C=["#6366f1","#0ea5e9","#10b981","#f59e0b","#ef4444","#8b5cf6","#92400e","#0f766e"];
+let g='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800"><rect width="1200" height="800" fill="#fef3c7"/>';
+for(let row=0;row<4;row++){const base=190*(row+1)+10;let x=10;
+ while(x<1180){const w=16+R()*26,h=95+R()*80,c=C[Math.floor(R()*C.length)],t=R()>.93;
+  g+=`<g transform="rotate(${t?-14:0} ${x} ${base})"><rect x="${x}" y="${base-h}" width="${w}" height="${h}" rx="2" fill="${c}"/><rect x="${x}" y="${base-h+14}" width="${w}" height="4" fill="#ffffff90"/><rect x="${x}" y="${base-24}" width="${w}" height="4" fill="#ffffff90"/></g>`;x+=w+2}
+ g+=`<rect x="0" y="${base}" width="1200" height="14" fill="#78350f"/>`}
+g+='</svg>';$("wm").style.backgroundImage=`url("data:image/svg+xml,${encodeURIComponent(g)}")`})();
+</script></body></html>
